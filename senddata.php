@@ -29,10 +29,36 @@ foreach($data as $hash => $values) {
     $gp->setX_iframeLoad($values['x_iframeLoad']);
     if (isset($values['responseEnd'])) {
         $gp->setResponseEnd($values['responseEnd']);
+        $gp->setloadEventEnd($values['loadEventEnd']);
+        $gp->setloadEventStart($values['loadEventStart']);
+        $gp->setdomComplete($values['domComplete']);
+        $gp->setdomContentLoadedEventEnd($values['domContentLoadedEventEnd']);
+        $gp->setdomContentLoadedEventStart($values['domContentLoadedEventStart']);
+        if (isset($values['domInteractive'])) {
+            $gp->setdomInteractive($values['domInteractive']);
+        }
+        $gp->setdomLoading($values['domLoading']);
+        $gp->setresponseStart($values['responseStart']);
+        $gp->setrequestStart($values['requestStart']);
+        $gp->setconnectEnd($values['connectEnd']);
+        $gp->setconnectStart($values['connectStart']);
+        $gp->setdomainLookupEnd($values['domainLookupEnd']);
+        $gp->setdomainLookupStart($values['domainLookupStart']);
+        $gp->setfetchStart($values['fetchStart']);
+        $gp->setnavigationStart($values['navigationStart']);
+
+
+    }
+    if (isset($values['x_startScript'])) {
+        $gp->setx_startScript($values['x_startScript']);
+        $gp->setx_domContentLoadedEvent($values['x_domContentLoadedEvent']);
+        $gp->setx_onLoad($values['x_onLoad']);
     }
     $em->persist($gp);
-    $em->flush();
+        $em->flush();
+
 }
+    $em->flush();
 
 
 echo "ende";
