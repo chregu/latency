@@ -2,19 +2,54 @@
 <html>
 <head>
 <title>Network latencies</title>
+<style>
+.txt1, .txt2 {
+    width: 150px;
+    display: inline-block;
+}
+
+.bar {
+    display: inline-block;
+    background-color: lightblue;
+}
+</style>
+
 <!--<meta content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;" name="viewport"/>-->
 <script>
 var sites = [
-	{'foo': 'http://127.0.0.1/collect.html'},
-	{'colo4': 'http://direct.chregu.tv/collect.html'},
-	/*{ 'aws-ireland': 'http://php-osx.liip.ch/foo.html'},
-	{'aws-us-east': 'http://liip-test-us-east.s3.amazonaws.com/foo.html'},
-	{'cloudfront': 'http://dhb9sekd08k4n.cloudfront.net/foo.html'},
-	{'hetzner-vserver': 'http://trash.chregu.tv/foo.html'},
-	{'cloudflare-query': 'http://chregu.tv/files/collect.html'},
-	*/
-	//{'cloudflare': 'http://chregu.tv/files/collect.html'}
-	];
+{'localhost-image': 'http://localhost/latency/cart.png'},
+{'foo': 'http://localhost/latency/collect.html'},
+
+{'cloudflare-picture': 'http://chregu.tv/files/cart.png'},
+{'cloudflare-html':    'http://chregu.tv/files/collect.html'},
+
+{'colo4':       'http://direct.chregu.tv/collect.html'},
+{'colo4-image': 'http://direct.chregu.tv/cart.png'},
+
+{'aws-ireland':       'http://php-osx.liip.ch/foo.html'},
+{'aws-ireland-image': 'http://php-osx.liip.ch/cart.png'},
+
+{'ec2-ireland':       'http://blog.liip.ch/files/collect.html'},
+{'ec2-ireland-image': 'http://blog.liip.ch/files/cart.png'},
+
+{'aws-us-east':       'http://liip-test-us-east.s3.amazonaws.com/foo.html'},
+{'aws-us-east-image': 'http://liip-test-us-east.s3.amazonaws.com/cart.png'},
+
+{'cloudfront':       'http://dhb9sekd08k4n.cloudfront.net/foo.html'},
+{'cloudfront-image': 'http://dhb9sekd08k4n.cloudfront.net/cart.png'},
+
+{'hetzner-vserver':       'http://trash.chregu.tv/foo.html'},
+{'hetzner-vserver-image': 'http://trash.chregu.tv/cart.png'},
+
+{'nine':   'http://shop.jungfrau.ch/skin/frontend/enterprise/jungfrau/images/cart.png'},
+{'google': 'http://www.gstatic.com/s2/oz/images/subscribe_btn.png'},
+
+];
+
+var static = [
+
+ ];
+
 var timings = {}
 
 
@@ -23,9 +58,13 @@ function addMessage(txt) {
     message.innerHTML +=  txt + "<br>";
 }
 
-function addSummary(txt) {
+function addSummary(txt, txt2) {
+    if (!txt2) {
+        summary.innerHTML +=  txt + "<br>";
+        return;
+    }
+    summary.innerHTML += "<span class='txt1'>" + txt + "</span><span class='txt2'>" + txt2 + " ms</span><span class='bar' style='width: "+txt2+"px'>&nbsp;</span><br>";
 
-    summary.innerHTML +=  txt + "<br>";
 }
 var message = null;
 var summary = null;
@@ -34,6 +73,9 @@ var summary = null;
 function successHandler(location) {
     var html = [];
     addMessage("Longitude: " + location.coords.longitude);
+    timings['x_data'] = {};
+    timings['x_data'].longitude = location.coords.longitude
+    timings['x_data'].latitude = location.coords.latitude
     addMessage("Latitude: " + location.coords.latitude);
     addMessage("Accuracy: " + location.coords.accuracy + " meters");
     addMessage(html.join(""));
@@ -41,54 +83,72 @@ function successHandler(location) {
 function errorHandler(error) {
 	addMessage("Location unknown");
 }
-navigator.geolocation.getCurrentPosition(successHandler, errorHandler);
-
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(successHandler, errorHandler);
+}
 function onLoad() {
   message = document.getElementById("message");
-    summary = document.getElementById("summary");
-
+  summary = document.getElementById("summary");
+  sites = shuffleArray(sites);
   nextSite();
 }
 
 function nextSite() {
-	  var site = sites.shift();
-	  if (site) {
+    var site = sites.shift();
+    if (site) {
 	  	addIframe(site);
-	  } else {
-		  addMessage("send data to server");
-		  sendDataToServer();
-		  addSummary("<b>Summary onLoad Event Time</b>");
+    } else {
+        addMessage("send data to server");
+        sendDataToServer();
+        addSummary("<b>Summary onLoad Event Time</b>");
+        var timingsSorted = sortTimings(timings);
+        for (var i in timingsSorted) {
+            addSummary(timingsSorted[i].key , timingsSorted[i].value['x_iframeLoad']);
+        }
 
-		  for (var i in timings) {
-			  addSummary(i + ": " + timings[i]['x_onLoad']);
-		  }
+        if (timings['foo']['responseEnd']) {
+            addSummary("<b>Summary responseEnd Event Time</b>");
 
-		  if (timings['foo']['responseEnd']) {
-			  addSummary("<b>Summary responseEnd Event Time</b>");
+            for (var i in timingsSorted) {
+                addSummary(timingsSorted[i].key , timingsSorted[i].value['responseEnd']);
 
-			  for (var i in timings) {
-				  addSummary(i + ": " + timings[i]['responseEnd']);
-			  }
+            }
 
-			    addSummary("<b>Summary x_startScript Event Time - responseEnd</b>");
+            addSummary("<b>Summary x_startScript Event Time - responseEnd</b>");
 
-			  for (var i in timings) {
-				  addSummary(i + ": " + (timings[i]['x_startScript'] - timings[i]['responseEnd']) );
-			  }
-		  }
-			    addSummary("<b>Summary  x_onLoad - x_startScript Event Time</b>");
+            for (var i in timingsSorted) {
+                addSummary(timingsSorted[i].key , timingsSorted[i].value['x_startScript'] - timingsSorted[i].value['responseEnd']);
+            }
+        }
+        addSummary("<b>Summary  x_onLoad - x_startScript Event Time</b>");
 
-			  for (var i in timings) {
-				  addSummary(i + ": " + (timings[i]['x_onLoad'] - timings[i]['x_startScript']) );
-			  }
-	  }
+        for (var i in timingsSorted) {
+            addSummary(timingsSorted[i].key , timingsSorted[i].value['x_startScript'] - timingsSorted[i].value['responseEnd']);
+
+            addSummary(i , (timingsSorted[i].value['x_iframeLoad'] - timingsSorted[i].value['x_startScript']) );
+        }
+
+        for (var hash in timings) {
+            var sorted = sortObject(timings[hash]);
+            addMessage("<b>Results for " + hash + " at " + timings[hash].x_location + "</b>");
+            for (var i in sorted) {
+                addMessage(sorted[i].key + ": " + sorted[i].value);
+            }
+        }
+
+        if (window.location.hash == "#reload") {
+            console.log("reload in 10 seconds");
+            window.setTimeout(function() {window.location.reload();},10000);
+        }
+//        window.setTimeout(function() {addSummaray("reload in
+    }
 }
 
 function sendDataToServer() {
 	var request = new XMLHttpRequest();
-request.open('POST', 'http://localhost/senddata.php', true);
-request.send(JSON.stringify(timings)); // because of "false" above, will block until the request is done
-                // and status is available. Not recommended, however it works for simple cases.
+    request.open('POST', 'senddata.php', true);
+    request.send(JSON.stringify(timings)); // because of "false" above, will block until the request is done
+    // and status is available. Not recommended, however it works for simple cases.
 
 
 }
@@ -97,35 +157,49 @@ function addIframe(site) {
 	for (var i in site) {
 		var iframes = document.getElementById("iframes");
 		var iframe = document.createElement("iframe");
-		var cachebuster = new Date().getTime();
-		if (i == 'cloudflare') {
-			cachebuster =  localStorage.getItem("counter");
-			cachebuster++;
-			localStorage.setItem("counter", cachebuster);
-		}
+        iframe.addEventListener("load",loadIframeEvent,false);
+        var cachebuster = new Date().getTime();
 		iframe.src = site[i] + "?" + cachebuster + "#" + i;
-		timings[i] = {'x_appendIframe': new Date().getTime()};
-		iframes.appendChild(iframe);
+		timings[i] = {'x_appendIframe': new Date().getTime(), 'x_location': site[i]};
+        addMessage("iframe added for " + i);
+
+        iframes.appendChild(iframe);
 	}
+}
+
+
+function loadIframeEvent(e) {
+    var iframe = e.srcElement;
+    var src = iframe.src;
+    var hash = src.substr(src.indexOf('#')+1);
+    addMessage("iframe loaded for " + hash);
+
+    try {
+        if (iframe.contentWindow.performance) {
+            var timing = iframe.contentWindow.performance.timing;
+            for (var i in timing) {
+                if (timing[i] > 0) {
+                    timings[hash][i] = timing[i] - timings[hash]['x_appendIframe'];
+                }
+            }
+        }
+    } catch (e) {
+    }
+    timings[hash]['x_iframeLoad'] = new Date().getTime() - timings[hash]['x_appendIframe'];
+    window.setTimeout(nextSite,50);
 }
 
 window.addEventListener("message", receiveMessage, false);
 
 function receiveMessage(event)
 {
+    addMessage("postMessage received for " + event.data.hash);
 	for (var i in event.data) {
 		if (typeof event.data[i] == "number") {
 
 			timings[event.data.hash][i] = event.data[i] - timings[event.data.hash]['x_appendIframe'];
 		}
 	}
-	var sorted = sortObject(timings[event.data.hash]);
-	addMessage("<b>Results for " + event.data.hash + " at " + event.data.location + "</b>");
-	for (var i in sorted) {
-		addMessage(sorted[i].key + ": " + sorted[i].value);
-	}
-   nextSite();
-
 }
 
 
@@ -144,6 +218,33 @@ function sortObject(obj) {
         return a.value - b.value;
     });
     return arr; // returns array
+}
+
+function sortTimings(obj) {
+    var arr = [];
+    var prop;
+    for (prop in obj) {
+        if (obj.hasOwnProperty(prop)) {
+            arr.push({
+                'key': prop,
+                'value': obj[prop]
+            });
+        }
+    }
+    arr.sort(function(a, b) {
+        return a.value.x_iframeLoad - b.value.x_iframeLoad;
+    });
+    return arr; // returns array
+}
+
+function shuffleArray(array) {
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+    return array;
 }
 
 
