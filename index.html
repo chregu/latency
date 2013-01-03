@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Network latencies</title>
+<!--<meta content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;" name="viewport"/>-->
+<script>
+var sites = [
+	{'foo': 'http://127.0.0.1/collect.html'},
+	{'colo4': 'http://direct.chregu.tv/collect.html'},
+	/*{ 'aws-ireland': 'http://php-osx.liip.ch/foo.html'},
+	{'aws-us-east': 'http://liip-test-us-east.s3.amazonaws.com/foo.html'},
+	{'cloudfront': 'http://dhb9sekd08k4n.cloudfront.net/foo.html'},
+	{'hetzner-vserver': 'http://trash.chregu.tv/foo.html'},
+	{'cloudflare-query': 'http://chregu.tv/files/collect.html'},
+	*/
+	//{'cloudflare': 'http://chregu.tv/files/collect.html'}
+	];
+var timings = {}
+
+
+function addMessage(txt) {
+
+    message.innerHTML +=  txt + "<br>";
+}
+
+function addSummary(txt) {
+
+    summary.innerHTML +=  txt + "<br>";
+}
+var message = null;
+var summary = null;
+
+
+function successHandler(location) {
+    var html = [];
+    addMessage("Longitude: " + location.coords.longitude);
+    addMessage("Latitude: " + location.coords.latitude);
+    addMessage("Accuracy: " + location.coords.accuracy + " meters");
+    addMessage(html.join(""));
+}
+function errorHandler(error) {
+	addMessage("Location unknown");
+}
+navigator.geolocation.getCurrentPosition(successHandler, errorHandler);
+
+function onLoad() {
+  message = document.getElementById("message");
+    summary = document.getElementById("summary");
+
+  nextSite();
+}
+
+function nextSite() {
+	  var site = sites.shift();
+	  if (site) {
+	  	addIframe(site);
+	  } else {
+		  addMessage("send data to server");
+		  sendDataToServer();
+		  addSummary("<b>Summary onLoad Event Time</b>");
+
+		  for (var i in timings) {
+			  addSummary(i + ": " + timings[i]['x_onLoad']);
+		  }
+
+		  if (timings['foo']['responseEnd']) {
+			  addSummary("<b>Summary responseEnd Event Time</b>");
+
+			  for (var i in timings) {
+				  addSummary(i + ": " + timings[i]['responseEnd']);
+			  }
+
+			    addSummary("<b>Summary x_startScript Event Time - responseEnd</b>");
+
+			  for (var i in timings) {
+				  addSummary(i + ": " + (timings[i]['x_startScript'] - timings[i]['responseEnd']) );
+			  }
+		  }
+			    addSummary("<b>Summary  x_onLoad - x_startScript Event Time</b>");
+
+			  for (var i in timings) {
+				  addSummary(i + ": " + (timings[i]['x_onLoad'] - timings[i]['x_startScript']) );
+			  }
+	  }
+}
+
+function sendDataToServer() {
+	var request = new XMLHttpRequest();
+request.open('POST', 'http://localhost/senddata.php', true);
+request.send(JSON.stringify(timings)); // because of "false" above, will block until the request is done
+                // and status is available. Not recommended, however it works for simple cases.
+
+
+}
+
+function addIframe(site) {
+	for (var i in site) {
+		var iframes = document.getElementById("iframes");
+		var iframe = document.createElement("iframe");
+		var cachebuster = new Date().getTime();
+		if (i == 'cloudflare') {
+			cachebuster =  localStorage.getItem("counter");
+			cachebuster++;
+			localStorage.setItem("counter", cachebuster);
+		}
+		iframe.src = site[i] + "?" + cachebuster + "#" + i;
+		timings[i] = {'x_appendIframe': new Date().getTime()};
+		iframes.appendChild(iframe);
+	}
+}
+
+window.addEventListener("message", receiveMessage, false);
+
+function receiveMessage(event)
+{
+	for (var i in event.data) {
+		if (typeof event.data[i] == "number") {
+
+			timings[event.data.hash][i] = event.data[i] - timings[event.data.hash]['x_appendIframe'];
+		}
+	}
+	var sorted = sortObject(timings[event.data.hash]);
+	addMessage("<b>Results for " + event.data.hash + " at " + event.data.location + "</b>");
+	for (var i in sorted) {
+		addMessage(sorted[i].key + ": " + sorted[i].value);
+	}
+   nextSite();
+
+}
+
+
+function sortObject(obj) {
+    var arr = [];
+    var prop;
+    for (prop in obj) {
+        if (obj.hasOwnProperty(prop)) {
+            arr.push({
+                'key': prop,
+                'value': obj[prop]
+            });
+        }
+    }
+    arr.sort(function(a, b) {
+        return a.value - b.value;
+    });
+    return arr; // returns array
+}
+
+
+</script>
+</head>
+<body onload="onLoad()">
+<div id="summary"> </div>
+
+<div id="message"> </div>
+<div id="iframes"> </div>
+<a href="javascript:localStorage.setItem('counter',0);">set counter to 0</a>
+</body>
+</html>

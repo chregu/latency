@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Network latencies</title>
+<script>
+var versionNumber = 1;
+var homegrownData = {};
+homegrownData['x_startScript'] = new Date().getTime();
+
+window.performance = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance || {};
+var message = null;
+
+
+window.addEventListener("DOMContentLoaded",domContentLoadedEvent,false);
+
+
+function domContentLoadedEvent() {
+    homegrownData['x_domContentLoadedEvent'] = new Date().getTime();
+}
+
+
+function collectData() {
+    homegrownData['x_onLoad'] = new Date().getTime();
+    message = document.getElementById("message");
+    addMessage("versionNumber" + versionNumber);
+    window.setTimeout(collectDataAsync,1);
+    addMessage("getting data for " + document.location.href);
+}
+
+function addMessage(txt) {
+
+    message.innerHTML += "<p>" + txt + "</p>";
+}
+
+function collectDataAsync() {
+
+    addMessage("collectData");
+    var now = new Date().getTime();
+    var timing = {location: document.location.href, hash: document.location.hash.substring(1)}
+    if (window.performance) {
+        for (var i in performance.timing) {
+            if (performance.timing[i] > 0) {
+                timing[i] = performance.timing[i];
+            }
+        }
+    }
+    for (var i in homegrownData) {
+        timing[i] = homegrownData[i];
+    }
+    window.parent.postMessage(timing,"*");
+}
+
+
+</script>
+</head>
+<body onload="collectData()">
+<div id="message"> </div>
+</body>
+</html>

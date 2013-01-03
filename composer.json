@@ -1,0 +1,22 @@
+{
+    "name": "chregu/latency",
+    "description": "Measures latency to some servers",
+    "autoload": {
+        "psr-0": { "": "src/" }
+    },
+    "require": {
+        "php": ">=5.3.3",
+        "doctrine/orm": "2.3.0-rc1",
+        "silex/silex": "1.0.*"
+    },
+    "scripts": {
+        "post-install-cmd": [
+        ],
+        "post-update-cmd": [
+        ]
+    },
+    "config": {
+        "bin-dir": "bin"
+    },
+    "minimum-stability": "dev"
+}
